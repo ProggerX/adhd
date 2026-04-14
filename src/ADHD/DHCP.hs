@@ -20,11 +20,13 @@ import Data.ByteString (ByteString, pack, toStrict)
 import Data.ByteString qualified as BS
 import Data.Map.Strict qualified as M
 import Data.Maybe
+import Data.Set qualified as Set
 import Net.IPv4 as IP hiding (encode)
 import Network.Socket hiding (socket)
 import Network.Socket qualified as S
 import Network.Socket.ByteString
 import System.Directory
+import System.IO
 import Prelude hiding (log)
 
 data Request
@@ -100,7 +102,11 @@ offer addr RawMessage {..} ip = do
         putCookie
         putOption 53 $ pack [2]
         putOption 54 $ ipToBs serverIp
-        putOption 1 . ipToBs $ maskToIp netMask
+        putOption 1
+          . ipToBs
+          . maskToIp
+          . fromIntegral
+          $ ipv4RangeLength network
         putOption 3 $ ipToBs gateway
         putOption 6 $ BS.concat $ ipToBs <$> dns
         putOption 51 $ pack [0xff, 0xff, 0xff, 0xff]
@@ -142,7 +148,11 @@ ack addr RawMessage {..} ip = do
         putCookie
         putOption 53 $ pack [5]
         putOption 54 $ ipToBs serverIp
-        putOption 1 . ipToBs $ maskToIp netMask
+        putOption 1
+          . ipToBs
+          . maskToIp
+          . fromIntegral
+          $ ipv4RangeLength network
         putOption 3 $ ipToBs gateway
         putOption 6 $ BS.concat $ ipToBs <$> dns
         putOption 51 $ pack [0xff, 0xff, 0xff, 0xff]
@@ -188,7 +198,7 @@ initialize = do
   mapExists <- doesFileExist "ipMap.bin"
   ipMap <-
     if mapExists
-      then read <$> readFile "ipMap.bin"
+      then read <$> readFile' "ipMap.bin"
       else pure mempty
 
   pure ServerState {socket = s, ipMap, pendingMap = mempty}
@@ -197,3 +207,18 @@ syncState :: DHCPM ()
 syncState = do
   ServerState {ipMap} <- get
   liftIO $ writeFile "ipMap.bin" $ show ipMap
+
+sanityCheck :: DHCPM ()
+sanityCheck = do
+  Configuration {occupiedIps} <- ask
+  st@ServerState {ipMap} <- get
+  put
+    st
+      { ipMap =
+          M.filter
+            ( not
+                . (`Set.member` Set.fromList occupiedIps)
+            )
+            ipMap
+      }
+  syncState

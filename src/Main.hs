@@ -20,6 +20,6 @@ main = do
     Right cfg ->
       void $
         runRWST
-          (forever loop)
+          (sanityCheck >> forever loop)
           cfg
           st

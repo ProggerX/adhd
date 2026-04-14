@@ -14,21 +14,23 @@ import System.Directory
 data Configuration = Configuration
   { serverIp :: IPv4,
     gateway :: IPv4,
-    netMask :: Int,
+    network :: IPv4Range,
+    occupiedIps :: [IPv4],
     dns :: [IPv4]
   }
 
 data DConfiguration = DConfiguration
   { serverIp :: Text,
     gateway :: Text,
-    netMask :: Natural,
+    network :: Text,
+    occupiedIps :: [Text],
     dns :: [Text]
   }
   deriving (Show, Generic, FromDhall)
 
-ipP :: Text -> Either String IPv4
-ipP t = case decode t of
-  Nothing -> Left $ "Cannot parse IP " <> unpack t
+maybeP :: (Text -> Maybe a) -> Text -> Either String a
+maybeP f t = case f t of
+  Nothing -> Left $ "Cannot parse: " <> unpack t
   Just x -> Right x
 
 actualConfiguration :: DConfiguration -> Either String Configuration
@@ -36,8 +38,11 @@ actualConfiguration DConfiguration {..} =
   Configuration
     <$> ipP serverIp
     <*> ipP gateway
-    <*> pure (fromIntegral netMask)
+    <*> maybeP decodeRange network
+    <*> traverse ipP occupiedIps
     <*> traverse ipP dns
+  where
+    ipP = maybeP decode
 
 readConfig :: IO (Either String Configuration)
 readConfig = do
