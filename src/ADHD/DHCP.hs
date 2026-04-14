@@ -76,6 +76,7 @@ respond addr raw = \case
       Just ip' | ip' == ip -> ack addr raw ip
       _ -> nak addr raw
 
+-- TODO: cleanup
 offer :: S.SockAddr -> RawMessage -> IPv4 -> DHCPM ()
 offer addr RawMessage {..} ip = do
   liftIO $ log Info $ "Offering " <> show ip <> " to " <> showMac chaddr

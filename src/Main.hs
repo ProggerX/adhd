@@ -10,18 +10,12 @@ import Control.Monad.RWS.CPS
 import Data.Maybe
 import Data.Text
 import Net.IPv4 hiding (print)
-import Network.Socket
 
 ip :: Text -> IPv4
 ip = fromJust . decode
 
 main :: IO ()
 main = do
-  s <- socket AF_INET Datagram defaultProtocol
-  setSocketOption s ReuseAddr 1
-  setSocketOption s Broadcast 1
-  bind s $ SockAddrInet 67 0
-
   st <- initialize
   void $
     runRWST
