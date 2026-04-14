@@ -5,6 +5,7 @@ import Control.Monad.RWS.CPS
 import Data.Map qualified as M
 import Net.IPv4
 
+-- HACK: hardcoded generation
 generateIp :: DHCPM (Maybe IPv4)
 generateIp = do
   ServerState {ipMap, pendingMap} <- get

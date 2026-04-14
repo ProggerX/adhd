@@ -1,4 +1,6 @@
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE OverloadedRecordDot #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
 module ADHD.DHCP.Raw where
 
@@ -14,7 +16,7 @@ import Data.List
 import Data.Map.Strict (Map)
 import Data.Maybe
 import Net.IPv4
-import Network.Socket
+import Network.Socket as S
 import Network.Socket.ByteString
 import Text.Printf
 

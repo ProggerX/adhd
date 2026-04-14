@@ -21,8 +21,10 @@ import Data.ByteString qualified as BS
 import Data.Map.Strict qualified as M
 import Data.Maybe
 import Net.IPv4 as IP hiding (encode)
+import Network.Socket hiding (socket)
 import Network.Socket qualified as S
 import Network.Socket.ByteString
+import System.Directory
 import Prelude hiding (log)
 
 data Request
@@ -50,14 +52,6 @@ loop =
         Just msg -> respond addr raw msg
         Nothing -> pure ()
 
-initialize :: IO ServerState
-initialize = do
-  s <- S.socket S.AF_INET S.Datagram S.defaultProtocol
-  S.setSocketOption s S.ReuseAddr 1
-  S.setSocketOption s S.Broadcast 1
-  S.bind s $ S.SockAddrInet 67 0
-  pure ServerState {socket = s, ipMap = mempty, pendingMap = mempty}
-
 respond :: S.SockAddr -> RawMessage -> Request -> DHCPM ()
 respond addr raw = \case
   Discover chaddr -> do
@@ -83,6 +77,7 @@ offer addr RawMessage {..} ip = do
   Configuration {..} <- ask
   st@ServerState {..} <- get
   put st {pendingMap = M.insert chaddr ip pendingMap}
+  syncState
 
   let bytes = toStrict . runPut $ do
         putWord8 2
@@ -124,6 +119,7 @@ ack addr RawMessage {..} ip = do
       { ipMap = M.insert chaddr ip ipMap,
         pendingMap = M.delete chaddr pendingMap
       }
+  syncState
 
   let bytes = toStrict . runPut $ do
         putWord8 2
@@ -181,3 +177,23 @@ nak addr RawMessage {..} = do
         putOption 54 $ ipToBs serverIp
         putOption' End
   void $ liftIO $ sendTo socket bytes addr
+
+initialize :: IO ServerState
+initialize = do
+  s <- S.socket AF_INET Datagram defaultProtocol
+  setSocketOption s ReuseAddr 1
+  setSocketOption s Broadcast 1
+  bind s $ SockAddrInet 67 0
+
+  mapExists <- doesFileExist "ipMap.bin"
+  ipMap <-
+    if mapExists
+      then read <$> readFile "ipMap.bin"
+      else pure mempty
+
+  pure ServerState {socket = s, ipMap, pendingMap = mempty}
+
+syncState :: DHCPM ()
+syncState = do
+  ServerState {ipMap} <- get
+  liftIO $ writeFile "ipMap.bin" $ show ipMap
