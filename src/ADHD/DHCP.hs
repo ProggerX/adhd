@@ -100,7 +100,7 @@ offer addr RawMessage {..} ip = do
         putCookie
         putOption 53 $ pack [2]
         putOption 54 $ ipToBs serverIp
-        putOption 1 $ ipToBs netMask
+        putOption 1 . ipToBs $ maskToIp netMask
         putOption 3 $ ipToBs gateway
         putOption 6 $ BS.concat $ ipToBs <$> dns
         putOption 51 $ pack [0xff, 0xff, 0xff, 0xff]
@@ -142,7 +142,7 @@ ack addr RawMessage {..} ip = do
         putCookie
         putOption 53 $ pack [5]
         putOption 54 $ ipToBs serverIp
-        putOption 1 $ ipToBs netMask
+        putOption 1 . ipToBs $ maskToIp netMask
         putOption 3 $ ipToBs gateway
         putOption 6 $ BS.concat $ ipToBs <$> dns
         putOption 51 $ pack [0xff, 0xff, 0xff, 0xff]

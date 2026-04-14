@@ -9,6 +9,7 @@ import Control.Monad.RWS.CPS
 import Data.Binary
 import Data.Binary.Get
 import Data.Binary.Put
+import Data.Bits
 import Data.ByteString (ByteString, fromStrict)
 import Data.ByteString qualified as BS
 import Data.ByteString.Builder
@@ -176,3 +177,6 @@ putOption' Pad = putWord8 0
 
 putOption :: Word8 -> ByteString -> Put
 putOption = (putOption' .) . Option
+
+maskToIp :: Int -> IPv4
+maskToIp n = IPv4 $ 0xffffffff `shiftL` (32 - n)

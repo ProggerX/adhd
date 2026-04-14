@@ -14,14 +14,14 @@ import System.Directory
 data Configuration = Configuration
   { serverIp :: IPv4,
     gateway :: IPv4,
-    netMask :: IPv4,
+    netMask :: Int,
     dns :: [IPv4]
   }
 
 data DConfiguration = DConfiguration
   { serverIp :: Text,
     gateway :: Text,
-    netMask :: Text,
+    netMask :: Natural,
     dns :: [Text]
   }
   deriving (Show, Generic, FromDhall)
@@ -36,7 +36,7 @@ actualConfiguration DConfiguration {..} =
   Configuration
     <$> ipP serverIp
     <*> ipP gateway
-    <*> ipP netMask
+    <*> pure (fromIntegral netMask)
     <*> traverse ipP dns
 
 readConfig :: IO (Either String Configuration)
