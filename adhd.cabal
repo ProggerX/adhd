@@ -1,0 +1,12 @@
+cabal-version: 3.12
+name: adhd
+synopsis: DHCP server made for fun i think
+version: 0
+
+executable adhd
+  ghc-options: -Wall
+  main-is: Main.hs
+  other-modules: ADHD.Config, ADHD.DHCP, ADHD.Logging, ADHD.DHCP.Raw, ADHD.DHCP.Generator
+  hs-source-dirs: src
+  build-depends: base, binary, network, vector, dhall, text, bytestring, ip, containers, mtl
+  default-language: GHC2024
