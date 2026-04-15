@@ -2,7 +2,6 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE NoFieldSelectors #-}
 
 module ADHD.DHCP where
@@ -14,10 +13,8 @@ import ADHD.Logging
 import Control.Applicative
 import Control.Monad
 import Control.Monad.RWS.CPS
-import Data.Binary hiding (get, put)
 import Data.Binary.Put
-import Data.ByteString (ByteString, pack, toStrict)
-import Data.ByteString qualified as BS
+import Data.ByteString (ByteString, toStrict)
 import Data.Map.Strict qualified as M
 import Data.Maybe
 import Data.Set qualified as Set
@@ -59,45 +56,44 @@ process :: ByteString -> Request -> DHCPM Response
 process chaddr = \case
   Discover -> do
     liftIO $ log Info "Got discover..."
-    ServerState {..} <- get
+    ServerState {ipMap} <- get
     gip <- generateIp
     pure $ case ipMap M.!? chaddr <|> gip of
       Just ip -> Offer ip
       Nothing -> None
   Request ip -> do
     liftIO $ log Info "Got request..."
-    ServerState {..} <- get
+    ServerState {ipMap, pendingMap} <- get
     pure $ case ipMap M.!? chaddr <|> pendingMap M.!? chaddr of
       Just ip' | ip' == ip -> Ack ip
       _ -> Nak
 
 respond :: S.SockAddr -> RawMessage -> Response -> DHCPM ()
 respond _ _ None = pure ()
-respond addr RawMessage {..} resp = do
-  Configuration {..} <- ask
-  st@ServerState {..} <- get
+respond addr rawMsg resp = do
+  cfg <- ask
+  st <- get
   let msg =
-        RawMessage
+        rawMsg
           { ciaddr = ipv4 0 0 0 0,
             yiaddr = ipv4 0 0 0 0,
-            siaddr = ipv4 0 0 0 0,
-            ..
+            siaddr = ipv4 0 0 0 0
           }
       offerMsg ip = msg {yiaddr = ip}
       bareOptions t =
         [ MessageType t,
-          ServerIdentity $ ipToBs serverIp
+          ServerIdentity $ ipToBs cfg.serverIp
         ]
       offerOptions t =
         bareOptions t
-          <> [ Gateway gateway,
-               NetworkMask $ ipv4RangeLength network,
-               DNS dns,
+          <> [ Gateway cfg.gateway,
+               NetworkMask $ ipv4RangeLength cfg.network,
+               DNS cfg.dns,
                LeaseDuration 0xffffff
              ]
   void
     . liftIO
-    . (flip $ sendTo socket) addr
+    . (flip $ sendTo st.socket) addr
     . toStrict
     . runPut
     . putMessage
@@ -108,13 +104,13 @@ respond addr RawMessage {..} resp = do
 
   case resp of
     Offer ip -> do
-      put st {pendingMap = M.insert chaddr ip pendingMap}
+      put st {pendingMap = M.insert rawMsg.chaddr ip st.pendingMap}
       syncState
     Ack ip -> do
       put
         st
-          { ipMap = M.insert chaddr ip ipMap,
-            pendingMap = M.delete chaddr pendingMap
+          { ipMap = M.insert rawMsg.chaddr ip st.ipMap,
+            pendingMap = M.delete rawMsg.chaddr st.pendingMap
           }
       syncState
     _ -> pure ()
