@@ -30,8 +30,8 @@ import System.IO
 import Prelude hiding (log)
 
 data Request
-  = Discover ByteString
-  | Request ByteString IPv4
+  = Discover
+  | Request IPv4
 
 data Response
   = Offer IPv4
@@ -40,131 +40,70 @@ data Response
   | None
 
 parseRequest :: RawMessage -> Maybe Request
-parseRequest msg@RawMessage {..} =
+parseRequest msg =
   getMessageType msg >>= \case
-    1 -> Just $ Discover chaddr
-    3 -> Request chaddr <$> getRequestedIp msg
+    1 -> Just $ Discover
+    3 -> Request <$> getRequestedIp msg
     _ -> Nothing
 
 loop :: DHCPM ()
 loop =
   recieve >>= \case
     Nothing -> pure ()
-    Just (raw, addr) ->
+    Just (raw@RawMessage {chaddr}, addr) ->
       case parseRequest raw of
-        Just msg -> process msg >>= respond addr raw
+        Just msg -> process chaddr msg >>= respond addr raw
         Nothing -> pure ()
 
-process :: Request -> DHCPM Response
-process = \case
-  Discover chaddr -> do
+process :: ByteString -> Request -> DHCPM Response
+process chaddr = \case
+  Discover -> do
     liftIO $ log Info "Got discover..."
     ServerState {..} <- get
     gip <- generateIp
     pure $ case ipMap M.!? chaddr <|> gip of
       Just ip -> Offer ip
       Nothing -> None
-  Request chaddr ip -> do
+  Request ip -> do
     liftIO $ log Info "Got request..."
     ServerState {..} <- get
     pure $ case ipMap M.!? chaddr <|> pendingMap M.!? chaddr of
       Just ip' | ip' == ip -> Ack ip
       _ -> Nak
 
--- FIXME: move serialization to another module and add interface for it
 respond :: S.SockAddr -> RawMessage -> Response -> DHCPM ()
 respond _ _ None = pure ()
 respond addr RawMessage {..} resp = do
   Configuration {..} <- ask
   st@ServerState {..} <- get
+  let msg =
+        RawMessage {..}
+          { ciaddr = ipv4 0 0 0 0,
+            yiaddr = ipv4 0 0 0 0,
+            siaddr = ipv4 0 0 0 0
+          }
+      offerMsg ip = msg {yiaddr = ip}
+      bareOptions t =
+        [ MessageType t,
+          ServerIdentity $ ipToBs serverIp
+        ]
+      offerOptions t =
+        bareOptions t
+          <> [ Gateway gateway,
+               NetworkMask $ ipv4RangeLength network,
+               DNS dns,
+               LeaseDuration 0xffffff
+             ]
   void
     . liftIO
     . (flip $ sendTo socket) addr
     . toStrict
     . runPut
+    . putMessage
     $ case resp of
-      Nak -> do
-        putWord8 2
-        putWord8 htype
-        putWord8 hlen
-        putWord8 0
-        putByteString xid
-        putByteString secs
-        putByteString flags
-
-        putWord32be 0
-        putWord32be 0
-        putWord32be 0
-        putWord32be $ getIPv4 giaddr
-
-        putByteString chaddr
-        putByteString $ BS.replicate 64 0
-        putByteString $ BS.replicate 128 0
-
-        putCookie
-        putOption 53 $ pack [6]
-        putOption 54 $ ipToBs serverIp
-        putOption' End
-      Offer ip -> do
-        putWord8 2
-        putWord8 htype
-        putWord8 hlen
-        putWord8 0
-        putByteString xid
-        putByteString secs
-        putByteString flags
-
-        putWord32be 0
-        putWord32be $ getIPv4 ip
-        putWord32be 0
-        putWord32be $ getIPv4 giaddr
-
-        putByteString chaddr
-        putByteString $ BS.replicate 64 0
-        putByteString $ BS.replicate 128 0
-
-        putCookie
-        putOption 53 $ pack [2]
-        putOption 54 $ ipToBs serverIp
-        putOption 1
-          . ipToBs
-          . maskToIp
-          . fromIntegral
-          $ ipv4RangeLength network
-        putOption 3 $ ipToBs gateway
-        putOption 6 $ BS.concat $ ipToBs <$> dns
-        putOption 51 $ pack [0xff, 0xff, 0xff, 0xff]
-        putOption' End
-      Ack ip -> do
-        putWord8 2
-        putWord8 htype
-        putWord8 hlen
-        putWord8 0
-        putByteString xid
-        putByteString secs
-        putByteString flags
-
-        putWord32be 0
-        putWord32be $ getIPv4 ip
-        putWord32be 0
-        putWord32be $ getIPv4 giaddr
-
-        putByteString chaddr
-        putByteString $ BS.replicate 64 0
-        putByteString $ BS.replicate 128 0
-
-        putCookie
-        putOption 53 $ pack [5]
-        putOption 54 $ ipToBs serverIp
-        putOption 1
-          . ipToBs
-          . maskToIp
-          . fromIntegral
-          $ ipv4RangeLength network
-        putOption 3 $ ipToBs gateway
-        putOption 6 $ BS.concat $ ipToBs <$> dns
-        putOption 51 $ pack [0xff, 0xff, 0xff, 0xff]
-        putOption' End
+      Nak -> msg `withOptions` bareOptions 6
+      Offer ip -> offerMsg ip `withOptions` offerOptions 2
+      Ack ip -> offerMsg ip `withOptions` offerOptions 5
 
   case resp of
     Offer ip -> do

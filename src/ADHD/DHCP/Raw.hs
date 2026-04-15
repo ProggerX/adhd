@@ -1,8 +1,11 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE OverloadedRecordDot #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StandaloneDeriving #-}
 
 module ADHD.DHCP.Raw where
+
+-- TODO: Split this module into 99999 shards
 
 import ADHD.Config
 import Control.Monad.RWS.CPS
@@ -10,7 +13,7 @@ import Data.Binary
 import Data.Binary.Get
 import Data.Binary.Put
 import Data.Bits
-import Data.ByteString (ByteString, fromStrict)
+import Data.ByteString (ByteString, fromStrict, pack, toStrict)
 import Data.ByteString qualified as BS
 import Data.ByteString.Builder
 import Data.List
@@ -53,6 +56,14 @@ data RawOption
   | End
   | Option Word8 ByteString
   deriving (Show)
+
+data Option
+  = MessageType Word8
+  | ServerIdentity ByteString
+  | Gateway IPv4
+  | NetworkMask Word8
+  | LeaseDuration Word32
+  | DNS [IPv4]
 
 showMac :: ByteString -> String
 showMac =
@@ -180,3 +191,51 @@ putOption = (putOption' .) . Option
 
 maskToIp :: Int -> IPv4
 maskToIp n = IPv4 $ 0xffffffff `shiftL` (32 - n)
+
+putIP :: IPv4 -> Put
+putIP = putWord32be . getIPv4
+
+putMessage :: RawMessage -> Put
+putMessage RawMessage {..} = do
+  putWord8 2
+  putWord8 htype
+  putWord8 hlen
+  putWord8 0
+  putByteString xid
+  putByteString secs
+  putByteString flags
+
+  putIP ciaddr
+  putIP yiaddr
+  putIP siaddr
+  putIP giaddr
+
+  putByteString chaddr
+  putByteString $ BS.replicate 64 0
+  putByteString $ BS.replicate 128 0
+
+  putCookie
+  putOptions options
+
+putOptions :: [RawOption] -> Put
+putOptions = mapM_ putOption'
+
+withOptions :: RawMessage -> [Option] -> RawMessage
+withOptions msg ops = msg {options = map packOption ops <> [End]}
+  where
+    packOption = \case
+      MessageType n -> Option 53 $ pack [n]
+      ServerIdentity bs -> Option 54 bs
+      NetworkMask w ->
+        Option 1
+          . ipToBs
+          . maskToIp
+          $ fromIntegral
+            w
+      Gateway ip -> Option 3 $ ipToBs ip
+      LeaseDuration w ->
+        Option 51
+          . toStrict
+          . toLazyByteString
+          $ word32BE w
+      DNS ips -> Option 6 $ BS.concat $ ipToBs <$> ips
