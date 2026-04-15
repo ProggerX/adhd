@@ -29,5 +29,6 @@ executable adhd
     ip,
     containers,
     mtl,
-    directory
+    directory,
+    random-shuffle
   default-language: GHC2024

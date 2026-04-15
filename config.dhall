@@ -5,5 +5,6 @@
   -- Gateway and server are ommited automatically
   occupiedIps = ["13.37.67.67", "13.37.13.37"],
   dns = ["13.37.67.67", "8.8.8.8"],
-  beautifulNums = [1337,69,52]
+  -- For now, no num splitting, only bytes are supported
+  beautifulBytes = [13,37,99,228,69,52,22,8,133,7]
 }

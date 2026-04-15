@@ -7,6 +7,7 @@ module ADHD.Config where
 
 import Data.Text
 import Data.Text.IO qualified as TIO
+import Data.Word
 import Dhall
 import Net.IPv4
 import System.Directory
@@ -17,7 +18,7 @@ data Configuration = Configuration
     network :: IPv4Range,
     occupiedIps :: [IPv4],
     dns :: [IPv4],
-    beautifulNums :: [Int]
+    beautifulBytes :: [Word8]
   }
 
 data DConfiguration = DConfiguration
@@ -26,7 +27,7 @@ data DConfiguration = DConfiguration
     network :: Text,
     occupiedIps :: [Text],
     dns :: [Text],
-    beautifulNums :: [Natural]
+    beautifulBytes :: [Word8]
   }
   deriving (Show, Generic, FromDhall)
 
@@ -43,7 +44,7 @@ actualConfiguration DConfiguration {..} =
     <*> maybeP decodeRange network
     <*> traverse ipP occupiedIps
     <*> traverse ipP dns
-    <*> pure (fromIntegral <$> beautifulNums)
+    <*> pure (fromIntegral <$> beautifulBytes)
   where
     ipP = maybeP decode
 
