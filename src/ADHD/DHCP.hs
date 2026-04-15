@@ -34,9 +34,10 @@ data Request
   | Request ByteString IPv4
 
 data Response
-  = Offer ByteString IPv4
+  = Offer IPv4
   | Nak
-  | Ack ByteString IPv4
+  | Ack IPv4
+  | None
 
 parseRequest :: RawMessage -> Maybe Request
 parseRequest msg@RawMessage {..} =
@@ -51,37 +52,60 @@ loop =
     Nothing -> pure ()
     Just (raw, addr) ->
       case parseRequest raw of
-        Just msg -> respond addr raw msg
+        Just msg -> process msg >>= respond addr raw
         Nothing -> pure ()
 
-respond :: S.SockAddr -> RawMessage -> Request -> DHCPM ()
-respond addr raw = \case
+process :: Request -> DHCPM Response
+process = \case
   Discover chaddr -> do
     liftIO $ log Info "Got discover..."
     ServerState {..} <- get
-    case ipMap M.!? chaddr of
-      Just ip -> offer addr raw ip
-      Nothing ->
-        generateIp >>= \case
-          Nothing -> pure ()
-          Just ip -> offer addr raw ip
+    gip <- generateIp
+    pure $ case ipMap M.!? chaddr <|> gip of
+      Just ip -> Offer ip
+      Nothing -> None
   Request chaddr ip -> do
     liftIO $ log Info "Got request..."
     ServerState {..} <- get
-    case ipMap M.!? chaddr <|> pendingMap M.!? chaddr of
-      Just ip' | ip' == ip -> ack addr raw ip
-      _ -> nak addr raw
+    pure $ case ipMap M.!? chaddr <|> pendingMap M.!? chaddr of
+      Just ip' | ip' == ip -> Ack ip
+      _ -> Nak
 
--- TODO: cleanup
-offer :: S.SockAddr -> RawMessage -> IPv4 -> DHCPM ()
-offer addr RawMessage {..} ip = do
-  liftIO $ log Info $ "Offering " <> show ip <> " to " <> showMac chaddr
+-- FIXME: move serialization to another module and add interface for it
+respond :: S.SockAddr -> RawMessage -> Response -> DHCPM ()
+respond _ _ None = pure ()
+respond addr RawMessage {..} resp = do
   Configuration {..} <- ask
   st@ServerState {..} <- get
-  put st {pendingMap = M.insert chaddr ip pendingMap}
-  syncState
+  void
+    . liftIO
+    . (flip $ sendTo socket) addr
+    . toStrict
+    . runPut
+    $ case resp of
+      Nak -> do
+        putWord8 2
+        putWord8 htype
+        putWord8 hlen
+        putWord8 0
+        putByteString xid
+        putByteString secs
+        putByteString flags
 
-  let bytes = toStrict . runPut $ do
+        putWord32be 0
+        putWord32be 0
+        putWord32be 0
+        putWord32be $ getIPv4 giaddr
+
+        putByteString chaddr
+        putByteString $ BS.replicate 64 0
+        putByteString $ BS.replicate 128 0
+
+        putCookie
+        putOption 53 $ pack [6]
+        putOption 54 $ ipToBs serverIp
+        putOption' End
+      Offer ip -> do
         putWord8 2
         putWord8 htype
         putWord8 hlen
@@ -111,23 +135,7 @@ offer addr RawMessage {..} ip = do
         putOption 6 $ BS.concat $ ipToBs <$> dns
         putOption 51 $ pack [0xff, 0xff, 0xff, 0xff]
         putOption' End
-
-  void $ liftIO $ sendTo socket bytes addr
-
-ack :: S.SockAddr -> RawMessage -> IPv4 -> DHCPM ()
-ack addr RawMessage {..} ip = do
-  liftIO $ log Info $ "Acknowledging, " <> show ip <> " belongs to " <> showMac chaddr
-  Configuration {..} <- ask
-
-  st@ServerState {..} <- get
-  put
-    st
-      { ipMap = M.insert chaddr ip ipMap,
-        pendingMap = M.delete chaddr pendingMap
-      }
-  syncState
-
-  let bytes = toStrict . runPut $ do
+      Ack ip -> do
         putWord8 2
         putWord8 htype
         putWord8 hlen
@@ -157,36 +165,19 @@ ack addr RawMessage {..} ip = do
         putOption 6 $ BS.concat $ ipToBs <$> dns
         putOption 51 $ pack [0xff, 0xff, 0xff, 0xff]
         putOption' End
-  void $ liftIO $ sendTo socket bytes addr
 
-nak :: S.SockAddr -> RawMessage -> DHCPM ()
-nak addr RawMessage {..} = do
-  liftIO $ log Info $ "Sending NAK to " <> showMac chaddr
-  Configuration {..} <- ask
-  ServerState {socket} <- get
-  let bytes = toStrict . runPut $ do
-        putWord8 2
-        putWord8 htype
-        putWord8 hlen
-        putWord8 0
-        putByteString xid
-        putByteString secs
-        putByteString flags
-
-        putWord32be 0
-        putWord32be 0
-        putWord32be 0
-        putWord32be $ getIPv4 giaddr
-
-        putByteString chaddr
-        putByteString $ BS.replicate 64 0
-        putByteString $ BS.replicate 128 0
-
-        putCookie
-        putOption 53 $ pack [6]
-        putOption 54 $ ipToBs serverIp
-        putOption' End
-  void $ liftIO $ sendTo socket bytes addr
+  case resp of
+    Offer ip -> do
+      put st {pendingMap = M.insert chaddr ip pendingMap}
+      syncState
+    Ack ip -> do
+      put
+        st
+          { ipMap = M.insert chaddr ip ipMap,
+            pendingMap = M.delete chaddr pendingMap
+          }
+      syncState
+    _ -> pure ()
 
 initialize :: IO ServerState
 initialize = do
