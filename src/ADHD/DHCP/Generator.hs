@@ -1,7 +1,7 @@
 module ADHD.DHCP.Generator where
 
 import ADHD.Config
-import ADHD.DHCP.Raw
+import ADHD.DHCP.Types
 import Control.Monad.RWS.CPS
 import Data.Map qualified as M
 import Data.Set qualified as S

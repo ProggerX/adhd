@@ -16,7 +16,8 @@ data Configuration = Configuration
     gateway :: IPv4,
     network :: IPv4Range,
     occupiedIps :: [IPv4],
-    dns :: [IPv4]
+    dns :: [IPv4],
+    beautifulNums :: [Int]
   }
 
 data DConfiguration = DConfiguration
@@ -24,7 +25,8 @@ data DConfiguration = DConfiguration
     gateway :: Text,
     network :: Text,
     occupiedIps :: [Text],
-    dns :: [Text]
+    dns :: [Text],
+    beautifulNums :: [Natural]
   }
   deriving (Show, Generic, FromDhall)
 
@@ -41,6 +43,7 @@ actualConfiguration DConfiguration {..} =
     <*> maybeP decodeRange network
     <*> traverse ipP occupiedIps
     <*> traverse ipP dns
+    <*> pure (fromIntegral <$> beautifulNums)
   where
     ipP = maybeP decode
 

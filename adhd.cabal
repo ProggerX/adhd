@@ -6,7 +6,28 @@ version: 0
 executable adhd
   ghc-options: -Wall
   main-is: Main.hs
-  other-modules: ADHD.Config, ADHD.DHCP, ADHD.Logging, ADHD.DHCP.Raw, ADHD.DHCP.Generator
+
+  other-modules:
+    ADHD.Config,
+    ADHD.DHCP,
+    ADHD.Logging,
+    ADHD.DHCP.Raw,
+    ADHD.DHCP.Generator,
+    ADHD.DHCP.Types,
+    ADHD.DHCP.Raw.Decoder,
+    ADHD.DHCP.Raw.Encoder
+
   hs-source-dirs: src
-  build-depends: base, binary, network, vector, dhall, text, bytestring, ip, containers, mtl, directory
+  build-depends:
+    base,
+    binary,
+    network,
+    vector,
+    dhall,
+    text,
+    bytestring,
+    ip,
+    containers,
+    mtl,
+    directory
   default-language: GHC2024

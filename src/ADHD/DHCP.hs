@@ -9,6 +9,9 @@ module ADHD.DHCP where
 import ADHD.Config
 import ADHD.DHCP.Generator
 import ADHD.DHCP.Raw
+import ADHD.DHCP.Raw.Decoder
+import ADHD.DHCP.Raw.Encoder
+import ADHD.DHCP.Types
 import ADHD.Logging
 import Control.Applicative
 import Control.Monad
@@ -106,6 +109,7 @@ respond addr rawMsg resp = do
     Offer ip -> do
       put st {pendingMap = M.insert rawMsg.chaddr ip st.pendingMap}
       syncState
+      info ["Offered ", show ip, " to ", showMac rawMsg.chaddr]
     Ack ip -> do
       put
         st
@@ -113,7 +117,10 @@ respond addr rawMsg resp = do
             pendingMap = M.delete rawMsg.chaddr st.pendingMap
           }
       syncState
-    _ -> pure ()
+      info ["Acknowledged that ", show ip, " belongs to ", showMac rawMsg.chaddr]
+    Nak -> info ["Sent NAK to ", showMac rawMsg.chaddr]
+  where
+    info = liftIO . log Info . concat
 
 initialize :: IO ServerState
 initialize = do
