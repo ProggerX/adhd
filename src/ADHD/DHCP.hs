@@ -77,10 +77,11 @@ respond addr RawMessage {..} resp = do
   Configuration {..} <- ask
   st@ServerState {..} <- get
   let msg =
-        RawMessage {..}
+        RawMessage
           { ciaddr = ipv4 0 0 0 0,
             yiaddr = ipv4 0 0 0 0,
-            siaddr = ipv4 0 0 0 0
+            siaddr = ipv4 0 0 0 0,
+            ..
           }
       offerMsg ip = msg {yiaddr = ip}
       bareOptions t =
