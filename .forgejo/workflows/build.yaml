@@ -2,7 +2,7 @@ name: Build ADHD
 on:
   push:
     branches:
-      - main
+      - master
 
 jobs:
   install-nix:
@@ -16,3 +16,8 @@ jobs:
         run: nix build .
       - name: Stat it
         run: stat ./result/bin/adhd
+      - name: Upload it
+      - uses: actions/upload-artifact@v3
+        with:
+          name: adhd
+          path: result/bin/adhd
