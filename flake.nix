@@ -6,7 +6,7 @@
   outputs = {
     flake-parts,
     nixpkgs,
-    ...
+    self,
   } @ inputs:
     flake-parts.lib.mkFlake {inherit inputs;} {
       systems = nixpkgs.lib.platforms.unix;
@@ -14,7 +14,7 @@
         hpkgs = pkgs.haskellPackages;
         opts = {
           root = ./.;
-          source-overrides = {}; # Put overrides here
+          source-overrides = {};
         };
         pkg = op': hpkgs.developPackage (opts // op');
       in {
@@ -27,6 +27,15 @@
               haskell-language-server
             ]);
         };
+      };
+      flake = let
+        xPkgs = import nixpkgs {system = "x86_64-linux";};
+      in {
+        nixosModules.default = {system, ...}: {
+          imports = [./nixos];
+          services.adhd.package = self.packages.${system}.default;
+        };
+        formatter.x86_64-linux = xPkgs.alejandra;
       };
     };
 }
