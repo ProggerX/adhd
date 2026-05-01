@@ -31,9 +31,9 @@
       flake = let
         xPkgs = import nixpkgs {system = "x86_64-linux";};
       in {
-        nixosModules.default = {system, ...}: {
+        nixosModules.default = {pkgs, ...}: {
           imports = [./nixos];
-          services.adhd.package = self.packages.${system}.default;
+          services.adhd.package = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
         };
         formatter.x86_64-linux = xPkgs.alejandra;
       };
