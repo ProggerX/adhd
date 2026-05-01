@@ -8,9 +8,9 @@
 in {
   options.services.adhd = {
     enable = lib.mkEnableOption "adhd DHCP server";
-    settings = lib.mkOption {
-      type = lib.types.attrs;
-      default = {};
+    configuration = lib.mkOption {
+      type = lib.types.lines;
+      default = "";
       description = "adhd configuration.";
     };
     package = lib.mkOption {
@@ -20,7 +20,7 @@ in {
 
   config = lib.mkIf cfg.enable {
     systemd.services.adhd = let
-      configFile = pkgs.writeText "adhd-config" (lib.toDhall cfg.settings);
+      configFile = pkgs.writeText "adhd-config" cfg.configuration;
     in {
       description = "ADHD DHCP server";
       wantedBy = ["multi-user.target"];
