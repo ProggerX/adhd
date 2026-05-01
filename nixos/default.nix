@@ -35,7 +35,7 @@ in {
         ExecStart = "${cfg.package}/bin/adhd";
       };
       preStart = ''
-        mkdir /var/lib/adhd && cp ${configFile} /var/lib/adhd/config.dhall
+        mkdir -p /var/lib/adhd && cp ${configFile} /var/lib/adhd/config.dhall
       '';
     };
   };
