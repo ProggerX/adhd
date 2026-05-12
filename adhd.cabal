@@ -30,5 +30,6 @@ executable adhd
     containers,
     mtl,
     directory,
-    random-shuffle
+    random-shuffle,
+    unix
   default-language: GHC2024
