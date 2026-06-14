@@ -48,7 +48,7 @@ parseRequest msg =
 
 loop :: DHCPM ()
 loop =
-  recieve >>= \case
+  receive >>= \case
     Nothing -> pure ()
     Just (raw@RawMessage {chaddr}, addr) ->
       case parseRequest raw of

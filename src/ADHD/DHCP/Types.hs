@@ -57,9 +57,7 @@ showMac :: ByteString -> String
 showMac =
   intercalate ":"
     . fmap (printf "%02x")
-    . reverse
-    . dropWhile (== 0)
-    . reverse
+    . dropWhileEnd (== 0)
     . BS.unpack
 
 ipToBs :: IPv4 -> ByteString

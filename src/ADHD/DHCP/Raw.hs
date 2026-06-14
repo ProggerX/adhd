@@ -25,8 +25,8 @@ replyDestAddr msg
   where
     ipToHostAddr = tupleToHostAddress . toOctets
 
-recieve :: DHCPM (Maybe (RawMessage, SockAddr))
-recieve = do
+receive :: DHCPM (Maybe (RawMessage, SockAddr))
+receive = do
   s <- gets (.socket)
   (bs, _addr) <- liftIO $ recvFrom s 1500
 

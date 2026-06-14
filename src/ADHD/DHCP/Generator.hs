@@ -39,4 +39,4 @@ generateIp = do
             d <- pr4 `but` bytes4
           ]
 
-  pure $ find (not . (`Set.member` usedIps)) allowedIps
+  pure $ find (`Set.notMember` usedIps) allowedIps
