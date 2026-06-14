@@ -42,7 +42,7 @@ data Response
 parseRequest :: RawMessage -> Maybe Request
 parseRequest msg =
   getMessageType msg >>= \case
-    1 -> Just $ Discover
+    1 -> Just Discover
     3 -> Request <$> getRequestedIp msg
     _ -> Nothing
 
@@ -61,9 +61,7 @@ process chaddr = \case
     liftIO $ log Info "Got discover..."
     ServerState {ipMap} <- get
     gip <- generateIp
-    pure $ case ipMap M.!? chaddr <|> gip of
-      Just ip -> Offer ip
-      Nothing -> None
+    pure $ maybe None Offer $ ipMap M.!? chaddr <|> gip
   Request ip -> do
     liftIO $ log Info "Got request..."
     ServerState {ipMap, pendingMap} <- get

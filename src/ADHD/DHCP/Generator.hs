@@ -6,8 +6,9 @@ import ADHD.Config
 import ADHD.DHCP.Types
 import Control.Monad
 import Control.Monad.RWS.CPS
+import Data.List
 import Data.Map qualified as M
-import Data.Set qualified as S
+import Data.Set qualified as Set
 import Net.IPv4
 import System.Random.Shuffle
 
@@ -20,7 +21,7 @@ generateIp = do
       . replicateM 4
       $ shuffleM cfg.beautifulBytes
   let usedIps =
-        S.fromList $
+        Set.fromList $
           cfg.gateway
             : concatMap M.elems [ipMap, pendingMap]
               <> cfg.occupiedIps
@@ -38,7 +39,4 @@ generateIp = do
             d <- pr4 `but` bytes4
           ]
 
-  pure $ case filter (not . (`S.member` usedIps)) $
-    allowedIps of
-    [] -> Nothing
-    (x : _) -> Just x
+  pure $ find (not . (`Set.member` usedIps)) allowedIps
