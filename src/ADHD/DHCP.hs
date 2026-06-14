@@ -16,8 +16,11 @@ import ADHD.Logging
 import Control.Applicative
 import Control.Monad
 import Control.Monad.RWS.CPS
+import Data.Binary qualified as Binary
 import Data.Binary.Put
 import Data.ByteString (ByteString, toStrict)
+import Data.ByteString qualified as BS
+import Data.ByteString.Lazy qualified as LBS
 import Data.Map.Strict qualified as M
 import Data.Maybe
 import Data.Set qualified as Set
@@ -61,11 +64,11 @@ process chaddr = \case
     liftIO $ log Info "Got discover..."
     ServerState {ipMap} <- get
     gip <- generateIp
-    pure $ maybe None Offer $ ipMap M.!? chaddr <|> gip
+    pure $ maybe None Offer $ getIPMap ipMap M.!? chaddr <|> gip
   Request ip -> do
     liftIO $ log Info "Got request..."
     ServerState {ipMap, pendingMap} <- get
-    pure $ case ipMap M.!? chaddr <|> pendingMap M.!? chaddr of
+    pure $ case getIPMap ipMap M.!? chaddr <|> pendingMap M.!? chaddr of
       Just ip' | ip' == ip -> Ack ip
       _ -> Nak
 
@@ -111,7 +114,7 @@ respond addr rawMsg resp = do
     Ack ip -> do
       put
         st
-          { ipMap = M.insert rawMsg.chaddr ip st.ipMap,
+          { ipMap = IPMap . M.insert rawMsg.chaddr ip $ getIPMap st.ipMap,
             pendingMap = M.delete rawMsg.chaddr st.pendingMap
           }
       syncState
@@ -130,7 +133,7 @@ initialize = do
   mapExists <- doesFileExist "ipMap.bin"
   ipMap <-
     if mapExists
-      then read <$> readFile' "ipMap.bin"
+      then Binary.decode . LBS.fromStrict <$> BS.readFile "ipMap.bin"
       else pure mempty
 
   pure ServerState {socket = s, ipMap, pendingMap = mempty}
@@ -138,7 +141,7 @@ initialize = do
 syncState :: DHCPM ()
 syncState = do
   ServerState {ipMap} <- get
-  liftIO $ writeFile "ipMap.bin" $ show ipMap
+  liftIO . BS.writeFile "ipMap.bin" . toStrict $ Binary.encode ipMap
 
 sanityCheck :: DHCPM ()
 sanityCheck = do
@@ -147,10 +150,11 @@ sanityCheck = do
   put
     st
       { ipMap =
-          M.filter
-            ( not
-                . (`Set.member` Set.fromList occupiedIps)
-            )
-            ipMap
+          IPMap
+            . M.filter
+              ( not
+                  . (`Set.member` Set.fromList occupiedIps)
+              )
+            $ getIPMap ipMap
       }
   syncState

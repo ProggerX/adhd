@@ -1,4 +1,4 @@
 result
 .direnv
 dist*
-ipMap.bin
+ipMap*

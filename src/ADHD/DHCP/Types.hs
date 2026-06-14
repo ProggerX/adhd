@@ -1,3 +1,5 @@
+{-# OPTIONS -Wno-orphans #-}
+
 module ADHD.DHCP.Types where
 
 import ADHD.Config
@@ -8,6 +10,7 @@ import Data.ByteString qualified as BS
 import Data.ByteString.Builder
 import Data.List
 import Data.Map.Strict (Map)
+import GHC.Generics
 import Net.IPv4
 import Network.Socket
 import Text.Printf
@@ -15,7 +18,7 @@ import Text.Printf
 type DHCPM = RWST Configuration () ServerState IO
 
 data ServerState = ServerState
-  { ipMap :: Map ByteString IPv4,
+  { ipMap :: IPMap,
     pendingMap :: Map ByteString IPv4,
     socket :: Socket
   }
@@ -52,6 +55,11 @@ data Option
   | NetworkMask Word8
   | LeaseDuration Word32
   | DNS [IPv4]
+
+newtype IPMap = IPMap {getIPMap :: Map ByteString IPv4}
+  deriving (Semigroup, Monoid, Generic, Binary)
+
+instance Binary IPv4
 
 showMac :: ByteString -> String
 showMac =

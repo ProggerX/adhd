@@ -23,7 +23,7 @@ generateIp = do
   let usedIps =
         Set.fromList $
           cfg.gateway
-            : concatMap M.elems [ipMap, pendingMap]
+            : concatMap M.elems [getIPMap ipMap, pendingMap]
               <> cfg.occupiedIps
       (pr1, pr2, pr3, pr4) = toOctets $ ipv4RangeBase cfg.network
 
