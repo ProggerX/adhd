@@ -1,7 +1,9 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE NoFieldSelectors #-}
+
+{-# OPTIONS -Wno-orphans #-}
 
 module ADHD.Config where
 
@@ -9,6 +11,7 @@ import Data.Text
 import Data.Text.IO qualified as TIO
 import Data.Word
 import Dhall
+import Dhall.Core
 import Net.IPv4
 import System.Directory
 
@@ -20,33 +23,25 @@ data Configuration = Configuration
     dns :: [IPv4],
     beautifulBytes :: [Word8]
   }
+  deriving (FromDhall, Generic, Show)
 
-data DConfiguration = DConfiguration
-  { serverIp :: Text,
-    gateway :: Text,
-    network :: Text,
-    occupiedIps :: [Text],
-    dns :: [Text],
-    beautifulBytes :: [Word8]
-  }
-  deriving (Show, Generic, FromDhall)
+instance FromDhall IPv4 where
+  autoWith _ = textWith decode
 
-maybeP :: (Text -> Maybe a) -> Text -> Either String a
-maybeP f t = case f t of
-  Nothing -> Left $ "Cannot parse: " <> unpack t
-  Just x -> Right x
+instance FromDhall IPv4Range where
+  autoWith _ = textWith decodeRange
 
-actualConfiguration :: DConfiguration -> Either String Configuration
-actualConfiguration DConfiguration {..} =
-  Configuration
-    <$> ipP serverIp
-    <*> ipP gateway
-    <*> maybeP decodeRange network
-    <*> traverse ipP occupiedIps
-    <*> traverse ipP dns
-    <*> pure (fromIntegral <$> beautifulBytes)
+textWith :: (Text -> Maybe a) -> Decoder a
+textWith parse =
+  Decoder
+    { extract = \case
+        TextLit (Chunks [] t) ->
+          Prelude.maybe (extractError $ "Cannot parse: " <> t) pure $ parse t
+        expr -> typeError expected' expr,
+      expected = expected'
+    }
   where
-    ipP = maybeP decode
+    expected' = expected strictText
 
 readConfig :: IO (Either String Configuration)
 readConfig = do
@@ -54,5 +49,6 @@ readConfig = do
   if exists
     then do
       txt <- TIO.readFile "config.dhall"
-      actualConfiguration <$> input auto txt
-    else pure $ Left "config file does not exist"
+      Right <$> input (auto @Configuration) txt
+    else
+      pure $ Left "config file does not exist"
