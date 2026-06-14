@@ -43,12 +43,9 @@ textWith parse =
   where
     expected' = expected strictText
 
-readConfig :: IO (Either String Configuration)
+readConfig :: IO Configuration
 readConfig = do
   exists <- doesFileExist "config.dhall"
   if exists
-    then do
-      txt <- TIO.readFile "config.dhall"
-      Right <$> input (auto @Configuration) txt
-    else
-      pure $ Left "config file does not exist"
+    then TIO.readFile "config.dhall" >>= input auto
+    else fail "config file does not exist"

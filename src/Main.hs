@@ -18,13 +18,9 @@ main = do
     log Error "Please, run the program from root"
     exitFailure
   st <- initialize
-  ecfg <- readConfig
-  case ecfg of
-    Left e ->
-      log Error $ "Error while reading config.dhall: " <> e
-    Right cfg ->
-      void $
-        runRWST
-          (sanityCheck >> forever loop)
-          cfg
-          st
+  cfg <- readConfig
+  void $
+    runRWST
+      (sanityCheck >> forever loop)
+      cfg
+      st
