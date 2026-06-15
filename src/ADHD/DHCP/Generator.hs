@@ -52,10 +52,12 @@ strings octets =
 
 glue :: [a] -> [[a]]
 glue xs =
-  [ take n rest
-  | rest <- tails xs,
-    n <- [1 .. length rest]
-  ]
+  concatMap
+    permutations
+    [ take n rest
+    | rest <- tails xs,
+      n <- [1 .. length rest]
+    ]
 
 split :: Int -> Text -> [[Text]]
 split 0 s
