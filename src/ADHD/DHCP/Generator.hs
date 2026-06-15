@@ -5,6 +5,7 @@ module ADHD.DHCP.Generator where
 import ADHD.Config
 import ADHD.DHCP.Types
 import Control.Monad.RWS.CPS
+import Data.Containers.ListUtils
 import Data.List
 import Data.Map qualified as M
 import Data.Maybe
@@ -32,26 +33,25 @@ generateIp = do
 
 beautifulIps :: IPv4Range -> [Text] -> [IPv4]
 beautifulIps network parts =
-  nub $
-    [ ip
-    | ss <- strings octets parts,
-      spl <- split octets ss,
-      host <- maybeToList $ traverse parseOctet spl,
-      ip <- maybeToList $ hostToIp network host
-    ]
+  nubOrd $
+    do
+      ss <- strings octets parts
+      spl <- split octets ss
+      os <- maybeToList $ traverse parseOctet spl
+      maybeToList $ hostToIp network os
   where
     octets = hostOctets network
 
 strings :: Int -> [Text] -> [Text]
 strings octets =
-  filter goodLength . nub . fmap T.concat . glue
+  filter goodLength . nubOrd . fmap T.concat . subsPerms
   where
     goodLength s =
       let len = T.length s
        in len >= octets && len <= octets * 3
 
-glue :: [a] -> [[a]]
-glue xs =
+subsPerms :: [a] -> [[a]]
+subsPerms xs =
   concatMap
     permutations
     [ take n rest
@@ -81,18 +81,9 @@ hostOctets = (`div` 8) . (32 -) . fromIntegral . ipv4RangeLength
 
 hostToIp :: IPv4Range -> [Word8] -> Maybe IPv4
 hostToIp network host =
-  case (hostOctets network, toOctets $ ipv4RangeBase network, host) of
-    (4, (_, _, _, _), [a, b, c, d]) ->
-      valid $ ipv4 a b c d
-    (3, (a, _, _, _), [b, c, d]) ->
-      valid $ ipv4 a b c d
-    (2, (a, b, _, _), [c, d]) ->
-      valid $ ipv4 a b c d
-    (1, (a, b, c, _), [d]) ->
-      valid $ ipv4 a b c d
-    _ ->
-      Nothing
-  where
-    valid ip
-      | network `contains` ip = Just ip
-      | otherwise = Nothing
+  let (a, b, c, d) = toOctets (ipv4RangeBase network)
+      full = take (4 - hostOctets network) [a, b, c, d] <> host
+   in case full of
+        [a', b', c', d']
+          | network `contains` ipv4 a' b' c' d' -> Just $ ipv4 a' b' c' d'
+        _ -> Nothing
