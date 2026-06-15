@@ -9,7 +9,6 @@ module ADHD.Config where
 
 import Data.Text
 import Data.Text.IO qualified as TIO
-import Data.Word
 import Dhall
 import Dhall.Core
 import Net.IPv4
@@ -21,7 +20,7 @@ data Configuration = Configuration
     network :: IPv4Range,
     occupiedIps :: [IPv4],
     dns :: [IPv4],
-    beautifulBytes :: [Word8]
+    beautifulStrings :: [Text]
   }
   deriving (FromDhall, Generic, Show)
 

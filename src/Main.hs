@@ -4,6 +4,7 @@ module Main where
 
 import ADHD.Config
 import ADHD.DHCP
+import ADHD.DHCP.Generator
 import ADHD.Logging
 import Control.Monad
 import Control.Monad.RWS.CPS
@@ -24,3 +25,15 @@ main = do
       (sanityCheck >> forever loop)
       cfg
       st
+
+-- NOTE: for debuging
+genIP :: IO ()
+genIP = do
+  st <- initialize
+  cfg <- readConfig
+  (a, _, _) <-
+    runRWST
+      (sanityCheck >> generateIp)
+      cfg
+      st
+  print a

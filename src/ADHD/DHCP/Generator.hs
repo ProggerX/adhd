@@ -4,39 +4,93 @@ module ADHD.DHCP.Generator where
 
 import ADHD.Config
 import ADHD.DHCP.Types
-import Control.Monad
 import Control.Monad.RWS.CPS
 import Data.List
 import Data.Map qualified as M
+import Data.Maybe
 import Data.Set qualified as Set
+import Data.Text (Text)
+import Data.Text qualified as T
+import Data.Word
 import Net.IPv4
 import System.Random.Shuffle
+import Text.Read (readMaybe)
 
 generateIp :: DHCPM (Maybe IPv4)
 generateIp = do
   ServerState {ipMap, pendingMap} <- get
   cfg <- ask
-  [bytes1, bytes2, bytes3, bytes4] <-
-    liftIO
-      . replicateM 4
-      $ shuffleM cfg.beautifulBytes
   let usedIps =
         Set.fromList $
           cfg.gateway
+            : cfg.serverIp
             : concatMap M.elems [getIPMap ipMap, pendingMap]
               <> cfg.occupiedIps
-      (pr1, pr2, pr3, pr4) = toOctets $ ipv4RangeBase cfg.network
+      candidates = beautifulIps cfg.network cfg.beautifulStrings
 
-      pr `but` ps = if pr == 0 then ps else [pr]
+  find (`Set.notMember` usedIps) <$> lift (shuffleM candidates)
 
-      allowedIps =
-        filter
-          (cfg.network `contains`)
-          [ ipv4 a b c d
-          | a <- pr1 `but` bytes1,
-            b <- pr2 `but` bytes2,
-            c <- pr3 `but` bytes3,
-            d <- pr4 `but` bytes4
-          ]
+beautifulIps :: IPv4Range -> [Text] -> [IPv4]
+beautifulIps network parts =
+  nub $
+    [ ip
+    | ss <- strings octets parts,
+      spl <- split octets ss,
+      host <- maybeToList $ traverse parseOctet spl,
+      ip <- maybeToList $ hostToIp network host
+    ]
+  where
+    octets = hostOctets network
 
-  pure $ find (`Set.notMember` usedIps) allowedIps
+strings :: Int -> [Text] -> [Text]
+strings octets =
+  filter goodLength . nub . fmap T.concat . glue
+  where
+    goodLength s =
+      let len = T.length s
+       in len >= octets && len <= octets * 3
+
+glue :: [a] -> [[a]]
+glue xs =
+  [ take n rest
+  | rest <- tails xs,
+    n <- [1 .. length rest]
+  ]
+
+split :: Int -> Text -> [[Text]]
+split 0 s
+  | T.null s = [[]]
+  | otherwise = []
+split count s =
+  [ part : restParts
+  | len <- [1 .. 3],
+    let (part, rest) = T.splitAt len s,
+    T.length part == len,
+    restParts <- split (count - 1) rest
+  ]
+
+parseOctet :: Text -> Maybe Word8
+parseOctet s = do
+  n <- readMaybe @Int (T.unpack s)
+  if n <= 255 then Just $ fromIntegral n else Nothing
+
+hostOctets :: IPv4Range -> Int
+hostOctets = (`div` 8) . (32 -) . fromIntegral . ipv4RangeLength
+
+hostToIp :: IPv4Range -> [Word8] -> Maybe IPv4
+hostToIp network host =
+  case (hostOctets network, toOctets $ ipv4RangeBase network, host) of
+    (4, (_, _, _, _), [a, b, c, d]) ->
+      valid $ ipv4 a b c d
+    (3, (a, _, _, _), [b, c, d]) ->
+      valid $ ipv4 a b c d
+    (2, (a, b, _, _), [c, d]) ->
+      valid $ ipv4 a b c d
+    (1, (a, b, c, _), [d]) ->
+      valid $ ipv4 a b c d
+    _ ->
+      Nothing
+  where
+    valid ip
+      | network `contains` ip = Just ip
+      | otherwise = Nothing
