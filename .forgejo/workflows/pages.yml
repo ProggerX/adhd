@@ -1,0 +1,15 @@
+name: Publish docs
+on: push
+jobs:
+  publish:
+    runs-on: proggerx
+    steps:
+      - uses: actions/checkout@v5
+      - run: |
+          nix develop . --command bash -c 'cabal haddock --haddock-all --haddock-option="--odir=_site"'
+      - uses: actions/git-pages@v2
+        with:
+          site: 'https://proggerx.codeberg.page/adhd/'
+          server: codeberg.page
+          token: ${{ forge.token }}
+          source: _site/
