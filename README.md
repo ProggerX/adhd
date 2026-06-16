@@ -1,5 +1,7 @@
 ## ADHD'ed DHCP server _(whatever this means)_
 
+[[logo.png]]
+
 ADHD is DHCP server I made for fun. Actually, to use it in all networks I have access to.
 Due to nature of DHCP protocol I may intrude any network with some funny leases!
 
