@@ -12,7 +12,7 @@
       hpkgs = pkgs: pkgs.haskell.packages.ghc910;
       opts = {
         root = ./.;
-        source-overrides = {}; # Put overrides here
+        source-overrides = {};
       };
       pkg = pkgs: op:
         (hpkgs pkgs).developPackage (opts // op);

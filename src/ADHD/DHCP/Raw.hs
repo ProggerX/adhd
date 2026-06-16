@@ -14,6 +14,7 @@ import Net.IPv4
 import Network.Socket as S
 import Network.Socket.ByteString
 
+-- | Get reply address. Needed to work properly under relay.
 replyDestAddr :: RawMessage -> SockAddr
 replyDestAddr msg
   | getIPv4 msg.giaddr /= 0 =
@@ -25,6 +26,7 @@ replyDestAddr msg
   where
     ipToHostAddr = tupleToHostAddress . toOctets
 
+-- | Recieve message from socket
 receive :: DHCPM (Maybe (RawMessage, SockAddr))
 receive = do
   s <- gets (.socket)
@@ -34,6 +36,7 @@ receive = do
     Left _ -> Nothing
     Right (_, _, msg) -> Just (msg, replyDestAddr msg)
 
+-- | Put abstract options in raw message
 withOptions :: RawMessage -> [Option] -> RawMessage
 withOptions msg ops = msg {options = map packOption ops <> [End]}
   where

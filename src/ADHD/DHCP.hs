@@ -1,3 +1,4 @@
+{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedRecordDot #-}
@@ -32,23 +33,27 @@ import System.Directory
 import System.IO
 import Prelude hiding (log)
 
+-- | Supported requests
 data Request
   = Discover
   | Request IPv4
 
+-- | Supported responses
 data Response
   = Offer IPv4
   | Nak
   | Ack IPv4
   | None
 
+-- | Parse request from raw message
 parseRequest :: RawMessage -> Maybe Request
 parseRequest msg =
   getMessageType msg >>= \case
     1 -> Just Discover
-    3 -> Request <$> getRequestedIp msg
+    3 -> Request <$> getRequestedIP msg
     _ -> Nothing
 
+-- | Main loop
 loop :: DHCPM ()
 loop =
   receive >>= \case
@@ -58,12 +63,17 @@ loop =
         Just msg -> process chaddr msg >>= respond addr raw
         Nothing -> pure ()
 
-process :: ByteString -> Request -> DHCPM Response
+-- | Process Request and give a Response
+process ::
+  -- | Client hardware address got from raw message
+  ByteString ->
+  Request ->
+  DHCPM Response
 process chaddr = \case
   Discover -> do
     liftIO $ log Info "Got discover..."
     ServerState {ipMap} <- get
-    gip <- generateIp
+    gip <- generateIP
     pure $ maybe None Offer $ getIPMap ipMap M.!? chaddr <|> gip
   Request ip -> do
     liftIO $ log Info "Got request..."
@@ -72,7 +82,14 @@ process chaddr = \case
       Just ip' | ip' == ip -> Ack ip
       _ -> Nak
 
-respond :: S.SockAddr -> RawMessage -> Response -> DHCPM ()
+-- | Send Response to socket
+respond ::
+  -- | Address needed to work under relay
+  S.SockAddr ->
+  -- | Raw message got from the client is updated to the responding message
+  RawMessage ->
+  Response ->
+  DHCPM ()
 respond _ _ None = pure ()
 respond addr rawMsg resp = do
   cfg <- ask
@@ -86,7 +103,7 @@ respond addr rawMsg resp = do
       offerMsg ip = msg {yiaddr = ip}
       bareOptions t =
         [ MessageType t,
-          ServerIdentity $ ipToBs cfg.serverIp
+          ServerIdentity $ ipToBs cfg.serverIP
         ]
       offerOptions t =
         bareOptions t
@@ -123,29 +140,38 @@ respond addr rawMsg resp = do
   where
     info = liftIO . log Info . concat
 
-initialize :: IO ServerState
-initialize = do
+-- | Initialize ServerState
+initialize ::
+  -- | Whether to bind socket. Needed for dry-running
+  Bool ->
+  IO ServerState
+initialize withSocket = do
   s <- S.socket AF_INET Datagram defaultProtocol
-  setSocketOption s ReuseAddr 1
-  setSocketOption s Broadcast 1
-  bind s $ SockAddrInet 67 0
 
-  mapExists <- doesFileExist "ipMap.bin"
+  when withSocket do
+    setSocketOption s ReuseAddr 1
+    setSocketOption s Broadcast 1
+    bind s $ SockAddrInet 67 0
+
+  let path = ".adhdMap.bin"
+  mapExists <- doesFileExist path
   ipMap <-
     if mapExists
-      then Binary.decode . LBS.fromStrict <$> BS.readFile "ipMap.bin"
+      then Binary.decode . LBS.fromStrict <$> BS.readFile path
       else pure mempty
 
   pure ServerState {socket = s, ipMap, pendingMap = mempty}
 
+-- | Write current state to the disk
 syncState :: DHCPM ()
 syncState = do
   ServerState {ipMap} <- get
-  liftIO . BS.writeFile "ipMap.bin" . toStrict $ Binary.encode ipMap
+  liftIO . BS.writeFile ".adhdMap.bin" . toStrict $ Binary.encode ipMap
 
+-- | Normalize server state on launch
 sanityCheck :: DHCPM ()
 sanityCheck = do
-  Configuration {occupiedIps} <- ask
+  Configuration {occupiedIPs} <- ask
   st@ServerState {ipMap} <- get
   put
     st
@@ -153,7 +179,7 @@ sanityCheck = do
           IPMap
             . M.filter
               ( not
-                  . (`Set.member` Set.fromList occupiedIps)
+                  . (`Set.member` Set.fromList occupiedIPs)
               )
             $ getIPMap ipMap
       }

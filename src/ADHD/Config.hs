@@ -14,12 +14,16 @@ import Dhall.Core
 import Net.IPv4
 import System.Directory
 
+-- | ADHD configuration.
 data Configuration = Configuration
-  { serverIp :: IPv4,
+  { -- | serverIP is needed by the protocol for ServerIdentity option (adhd still listens on ANY interface)
+    serverIP :: IPv4,
     gateway :: IPv4,
     network :: IPv4Range,
-    occupiedIps :: [IPv4],
+    -- | occupiedIPs + gateway + serverIP are excluded from the set for generation
+    occupiedIPs :: [IPv4],
     dns :: [IPv4],
+    -- | beautifulStrings are string patterns used for generation. ONLY them are used for generation.
     beautifulStrings :: [Text]
   }
   deriving (FromDhall, Generic, Show)
@@ -30,6 +34,7 @@ instance FromDhall IPv4 where
 instance FromDhall IPv4Range where
   autoWith _ = textWith decodeRange
 
+-- | Helper to decode IPs from dhall text
 textWith :: (Text -> Maybe a) -> Decoder a
 textWith parse =
   Decoder
@@ -42,9 +47,13 @@ textWith parse =
   where
     expected' = expected strictText
 
-readConfig :: IO Configuration
-readConfig = do
-  exists <- doesFileExist "config.dhall"
+-- | Procedure for reading configuration
+readConfig ::
+  -- | Where to get configuration
+  FilePath ->
+  IO Configuration
+readConfig path = do
+  exists <- doesFileExist path
   if exists
-    then TIO.readFile "config.dhall" >>= input auto
-    else fail "config file does not exist"
+    then TIO.readFile path >>= input auto
+    else fail $ "config file " <> path <> " does not exist"

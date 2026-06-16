@@ -7,6 +7,7 @@ import Data.ByteString qualified as BS
 import Data.Maybe
 import Net.IPv4
 
+-- | Getter for the raw messages
 getMessage :: Get RawMessage
 getMessage =
   RawMessage
@@ -26,9 +27,11 @@ getMessage =
     <*> getByteString 128
     <*> (getCookie >> getOptions)
 
+-- | Getter for the IPs
 getIP :: Get IPv4
 getIP = IPv4 <$> getWord32be
 
+-- | Getter to check magical DHCP cookie
 getCookie :: Get Word32
 getCookie = do
   ck <- getWord32be
@@ -37,6 +40,7 @@ getCookie = do
       pure ck
     else fail "Wrong cookie"
 
+-- | Getter for raw option
 getOption :: Get RawOption
 getOption = do
   tag <- getWord8
@@ -48,6 +52,7 @@ getOption = do
       val <- getByteString $ fromIntegral len
       pure $ Option tag val
 
+-- | Getter for raw options
 getOptions :: Get [RawOption]
 getOptions = go
   where
@@ -57,6 +62,7 @@ getOptions = go
         End -> pure [End]
         _ -> (opt :) <$> go
 
+-- | Get message type byte from raw message
 getMessageType :: RawMessage -> Maybe Word8
 getMessageType RawMessage {options} =
   listToMaybe $
@@ -67,8 +73,9 @@ getMessageType RawMessage {options} =
       )
       options
 
-getRequestedIp :: RawMessage -> Maybe IPv4
-getRequestedIp RawMessage {options} =
+-- | Get IP requsted by the client from raw message
+getRequestedIP :: RawMessage -> Maybe IPv4
+getRequestedIP RawMessage {options} =
   listToMaybe $
     mapMaybe
       ( \case

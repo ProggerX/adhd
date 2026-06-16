@@ -2,3 +2,6 @@ result
 .direnv
 dist*
 ipMap*
+.adhdMap*
+adhd
+release

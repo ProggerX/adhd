@@ -15,6 +15,7 @@ import Net.IPv4
 import Network.Socket
 import Text.Printf
 
+-- | Main server monad
 type DHCPM = RWST Configuration () ServerState IO
 
 data ServerState = ServerState
@@ -23,6 +24,7 @@ data ServerState = ServerState
     socket :: Socket
   }
 
+-- | RFC-accurate raw message type
 data RawMessage = RawMessage
   { op :: Word8,
     htype :: Word8,
@@ -42,12 +44,14 @@ data RawMessage = RawMessage
   }
   deriving (Show)
 
+-- | Helper type for parsing options
 data RawOption
   = Pad
   | End
   | Option Word8 ByteString
   deriving (Show)
 
+-- | Abstracted option type
 data Option
   = MessageType Word8
   | ServerIdentity ByteString
@@ -56,11 +60,14 @@ data Option
   | LeaseDuration Word32
   | DNS [IPv4]
 
+-- | IP map serialized and written to disk
 newtype IPMap = IPMap {getIPMap :: Map ByteString IPv4}
   deriving (Semigroup, Monoid, Generic, Binary)
 
+-- | Orphan instance to serialize IPs
 instance Binary IPv4
 
+-- | Convert "client hardware address" to pretty MAC
 showMac :: ByteString -> String
 showMac =
   intercalate ":"

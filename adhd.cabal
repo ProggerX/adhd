@@ -1,7 +1,8 @@
 cabal-version: 3.12
 name: adhd
 synopsis: DHCP server made for fun i think
-version: 0.7.0
+version: 1.33.7
+category: Network
 
 executable adhd
   ghc-options: -Wall
@@ -31,5 +32,6 @@ executable adhd
     mtl,
     directory,
     random-shuffle,
-    unix
+    unix,
+    optparse-applicative
   default-language: GHC2024
