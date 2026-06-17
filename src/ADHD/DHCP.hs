@@ -110,7 +110,7 @@ respond addr rawMsg resp = do
           <> [ Gateway cfg.gateway,
                NetworkMask $ ipv4RangeLength cfg.network,
                DNS cfg.dns,
-               LeaseDuration 0xffffff
+               LeaseDuration 0xffffffff
              ]
   void
     . liftIO
