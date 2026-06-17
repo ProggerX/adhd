@@ -39,7 +39,14 @@ receive = do
 
 -- | Put abstract options in raw message
 withOptions :: RawMessage -> [Option] -> RawMessage
-withOptions msg ops = msg {options = map packOption ops <> [Option 15 "lan", End]}
+withOptions msg ops =
+  msg
+    { options =
+        map packOption ops
+          <> [ Option 15 "lan",
+               End
+             ]
+    }
   where
     packOption = \case
       MessageType n -> Option 53 $ pack [n]
@@ -57,3 +64,4 @@ withOptions msg ops = msg {options = map packOption ops <> [Option 15 "lan", End
           . toLazyByteString
           $ word32BE w
       DNS ips -> Option 6 $ BS.concat $ ipToBs <$> ips
+      BroadcastAddress br -> Option 28 $ ipToBs br

@@ -19,6 +19,7 @@ import Control.Monad
 import Control.Monad.RWS.CPS
 import Data.Binary qualified as Binary
 import Data.Binary.Put
+import Data.Bits
 import Data.ByteString (ByteString, toStrict)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as LBS
@@ -110,7 +111,14 @@ respond addr rawMsg resp = do
           <> [ Gateway cfg.gateway,
                NetworkMask $ ipv4RangeLength cfg.network,
                DNS cfg.dns,
-               LeaseDuration 0xffffffff
+               LeaseDuration 0xffffffff,
+               BroadcastAddress $
+                 ipv4RangeBase cfg.network
+                   .|. ( complement
+                           . maskToIp
+                           . fromIntegral
+                           $ ipv4RangeLength cfg.network
+                       )
              ]
   void
     . liftIO

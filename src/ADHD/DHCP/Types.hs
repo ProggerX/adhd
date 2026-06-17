@@ -59,6 +59,7 @@ data Option
   | NetworkMask Word8
   | LeaseDuration Word32
   | DNS [IPv4]
+  | BroadcastAddress IPv4
 
 -- | IP map serialized and written to disk
 newtype IPMap = IPMap {getIPMap :: Map ByteString IPv4}
