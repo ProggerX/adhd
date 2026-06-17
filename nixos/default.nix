@@ -27,13 +27,10 @@ in {
       after = ["network.target"];
 
       serviceConfig = {
-        WorkingDirectory = "/var/lib/adhd";
+        User = "root";
 
-        StateDirectory = "adhd";
-
+        ExecStart = "${cfg.package}/bin/adhd -c ${configFile}";
         Restart = "always";
-
-        ExecStart = "${cfg.package}/bin/adhd";
       };
       preStart = ''
         mkdir -p /var/lib/adhd && cp ${configFile} /var/lib/adhd/config.dhall
