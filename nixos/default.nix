@@ -32,9 +32,6 @@ in {
         ExecStart = "${cfg.package}/bin/adhd -c ${configFile}";
         Restart = "always";
       };
-      preStart = ''
-        mkdir -p /var/lib/adhd && cp ${configFile} /var/lib/adhd/config.dhall
-      '';
     };
   };
 }
