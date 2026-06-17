@@ -21,3 +21,7 @@ It's intuitive and short (example: ./config.dhall)
 
 ### Documentation?
 Haddock comments are present in the source. Pre-built docs are distributed in release assets.
+
+### Note about tunnels
+If you want to run this server on a device that is routing all traffic through tunnel, you'll need to add a specific route for broadcast:
+`ip route add 255.255.255.255/32 dev <your_local_interface>`
