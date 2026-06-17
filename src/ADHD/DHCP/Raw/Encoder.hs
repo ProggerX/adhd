@@ -3,6 +3,7 @@
 module ADHD.DHCP.Raw.Encoder where
 
 import ADHD.DHCP.Types
+import Control.Monad
 import Data.Binary
 import Data.Binary.Put
 import Data.Bits
@@ -60,4 +61,16 @@ putMessage RawMessage {..} = do
 
 -- | Putter for raw options
 putOptions :: [RawOption] -> Put
-putOptions = mapM_ putOption'
+putOptions ops = do
+  let serializedOps = BS.toStrict $ runPut (mapM_ putOption' ops)
+      totalLength = 4 + BS.length serializedOps
+      remainder = totalLength `mod` 4
+      padCount = if remainder == 0 then 0 else 4 - remainder
+
+  if padCount > 0 && BS.last serializedOps == 0xff
+    then do
+      putByteString (BS.init serializedOps)
+      replicateM_ padCount (putWord8 0)
+      putWord8 0xff
+    else do
+      putByteString serializedOps
