@@ -24,6 +24,7 @@ in {
     in {
       description = "ADHD DHCP server";
       wantedBy = ["multi-user.target"];
+      after = ["network.target"];
 
       serviceConfig = {
         WorkingDirectory = "/var/lib/adhd";
