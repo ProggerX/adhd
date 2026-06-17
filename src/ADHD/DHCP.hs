@@ -98,7 +98,7 @@ respond addr rawMsg resp = do
         rawMsg
           { ciaddr = ipv4 0 0 0 0,
             yiaddr = ipv4 0 0 0 0,
-            siaddr = ipv4 0 0 0 0
+            siaddr = cfg.serverIP
           }
       offerMsg ip = msg {yiaddr = ip}
       bareOptions t =

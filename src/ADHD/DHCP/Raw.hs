@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedRecordDot #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module ADHD.DHCP.Raw where
 
@@ -38,7 +39,7 @@ receive = do
 
 -- | Put abstract options in raw message
 withOptions :: RawMessage -> [Option] -> RawMessage
-withOptions msg ops = msg {options = map packOption ops <> [End]}
+withOptions msg ops = msg {options = map packOption ops <> [Option 15 "lan", End]}
   where
     packOption = \case
       MessageType n -> Option 53 $ pack [n]
