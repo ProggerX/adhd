@@ -1,11 +1,19 @@
 module ADHD.Logging where
 
-import System.IO (hFlush, hPutStrLn, stderr, stdout)
+import System.IO (hFlush, hPutStrLn, stderr)
 
 -- | Log level
 data Level = Info | Error
 
+red :: String -> String
+red text = "\ESC[31m" ++ text ++ "\ESC[0m"
+
 -- | Log text with specified level
 log :: Level -> String -> IO ()
-log Info str = putStrLn ("[INFO] " <> str) >> hFlush stdout
-log Error str = hPutStrLn stderr ("[ERROR] " <> str) >> hFlush stdout
+log level str = do
+  hPutStrLn stderr text
+  hFlush stderr
+  where
+    text = case level of
+      Error -> red $ "[ERROR]: " <> str
+      Info -> "[INFO]: " <> str
