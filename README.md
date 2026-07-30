@@ -17,7 +17,18 @@ ADHD features a unique "meme-ip" generator. Do you want leet ips? Just add "1337
 - `cabal run`/`nix run`/`./result/bin/adhd`/`./adhd`
 
 ### Configuration
-It's intuitive and short (example: ./config.dhall)
+Config is provided in dhall file using `-c` argument. Default is `$PWD/config.dhall`
+```dhall
+{
+  network = "13.37.0.0/16", -- Subnet where to distribute addresses
+  serverIP = "13.37.22.8", -- IP of the machine where ADHD hosts
+  gateway = "13.37.0.1", -- Gateway of the subnet for internet access
+  occupiedIPs = ["13.37.67.67", "13.37.13.37"], -- IPs not to distribute (for static ones etc)
+                                                -- Gateway and server are ommited automatically
+  dns = ["13.37.67.67", "8.8.8.8"], -- Nameservers to include with in DHCP response
+  beautifulStrings = ["1337","228","67","999"] -- Strings from which IPs are generated
+}
+```
 
 ### Documentation?
 Haddock comments are present in the source. Pre-built docs are distributed in release assets.
