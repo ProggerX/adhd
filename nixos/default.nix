@@ -30,6 +30,8 @@ in {
         User = "root";
 
         ExecStart = "${cfg.package}/bin/adhd -c ${configFile}";
+        StateDirectory = "adhd";
+        WorkingDirectory = "/var/lib/adhd";
         Restart = "always";
       };
     };
