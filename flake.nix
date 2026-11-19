@@ -24,7 +24,18 @@
       perSystem = {pkgs, ...}: {
         formatter = pkgs.alejandra;
         packages.default = pkg pkgs pkgs {};
-        packages.static = pkg pkgs pkgs.pkgsStatic {};
+        packages.static = pkg pkgs pkgs.pkgsStatic {
+          modifier = drv:
+            pkgs.haskell.lib.compose.justStaticExecutables (
+              drv.overrideAttrs (old: {
+                nativeBuildInputs = (old.nativeBuildInputs or []) ++ [ pkgs.nukeReferences ];
+                allowedReferences = [];
+                postFixup = (old.postFixup or "") + ''
+                  find $out/bin -type f -exec nuke-refs {} +
+                '';
+              })
+            );
+        };
 
         devShells.default = pkg pkgs pkgs {
           returnShellEnv = true;
