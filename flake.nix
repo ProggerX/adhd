@@ -29,7 +29,7 @@
             pkgs.haskell.lib.compose.justStaticExecutables (
               drv.overrideAttrs (old: {
                 nativeBuildInputs = (old.nativeBuildInputs or []) ++ [ pkgs.nukeReferences ];
-                allowedReferences = [];
+                allowedReferences = [ "out" ];
                 postFixup = (old.postFixup or "") + ''
                   nuke-refs $out/bin/adhd
                   mkdir -p $out/nix-support
