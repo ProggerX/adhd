@@ -22,6 +22,9 @@
         formatter = pkgs.alejandra;
         packages.default = pkg pkgs {};
         packages.static = pkg pkgs.pkgsStatic {};
+        packages.cross-aarch64-linux = pkg pkgs.pkgsCross.aarch64-multiplatform {};
+        packages.cross-aarch64-linux-static = pkg pkgs.pkgsCross.aarch64-multiplatform.pkgsStatic {};
+
         devShells.default = pkg pkgs {
           returnShellEnv = true;
           modifier = drv:
@@ -38,7 +41,8 @@
         };
         hydraJobs = {
           packages.x86_64-linux = self.packages.x86_64-linux;
-          packages.aarch64-linux = self.packages.aarch64-linux;
+          packages.cross-aarch64-linux.default = self.packages.x86_64-linux.cross-aarch64-linux;
+          packages.cross-aarch64-linux.static = self.packages.x86_64-linux.cross-aarch64-linux-static;
         };
       };
     });
