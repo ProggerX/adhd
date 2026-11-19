@@ -8,7 +8,10 @@ Due to nature of DHCP protocol I may intrude any network with some funny leases!
 ### Main feature
 ADHD features a unique "meme-ip" generator. Do you want leet ips? Just add "1337" to list and you'll get possible combinations in offers!
 
-### Build it:
+### Get it:
+- Download from [my hydra](http://hydra.bald.su/jobset/adhd/adhd#tabs-jobs) if it's online
+
+### Or build it:
 - `nix build`/`cabal build`/`cabal install --installdir=.`
 - You can use `./make_release.sh temp` (requires Nix) to build static executable with docs.
 
