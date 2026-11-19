@@ -9,21 +9,24 @@
     ...
   } @ inputs:
     flake-parts.lib.mkFlake {inherit inputs;} (let
-      hpkgs = pkgs: pkgs.haskell.packages.ghc910;
       opts = {
         root = ./.;
         source-overrides = {};
       };
-      pkg = pkgs: op:
-        (hpkgs pkgs).developPackage (opts // op);
+      pkg = nativePkgs: targetPkgs: op:
+        ((targetPkgs.haskell.packages.ghc910.override {
+          overrides = _: _: {
+            inherit (nativePkgs.haskell.packages.ghc910) cabal2nix;
+          };
+        }).developPackage (opts // op));
     in {
       systems = ["x86_64-linux" "aarch64-linux" "aarch64-darwin"];
       perSystem = {pkgs, ...}: {
         formatter = pkgs.alejandra;
-        packages.default = pkg pkgs {};
-        packages.static = pkg pkgs.pkgsStatic {};
+        packages.default = pkg pkgs pkgs {};
+        packages.static = pkg pkgs pkgs.pkgsStatic {};
 
-        devShells.default = pkg pkgs {
+        devShells.default = pkg pkgs pkgs {
           returnShellEnv = true;
           modifier = drv:
             pkgs.haskell.lib.addBuildTools drv (with pkgs; [
