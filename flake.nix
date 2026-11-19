@@ -39,7 +39,7 @@
         hydraJobs = {
           packages.x86_64-linux = self.packages.x86_64-linux;
           packages.aarch64-linux = self.packages.aarch64-linux;
-        }
+        };
       };
     });
 }
