@@ -36,6 +36,10 @@
           imports = [./nixos];
           services.adhd.package = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
         };
+        hydraJobs = {
+          packages.x86_64-linux = self.packages.x86_64-linux;
+          packages.aarch64-linux = self.packages.aarch64-linux;
+        }
       };
     });
 }
