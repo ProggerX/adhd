@@ -31,7 +31,9 @@
                 nativeBuildInputs = (old.nativeBuildInputs or []) ++ [ pkgs.nukeReferences ];
                 allowedReferences = [];
                 postFixup = (old.postFixup or "") + ''
-                  find $out/bin -type f -exec nuke-refs {} +
+                  nuke-refs $out/bin/adhd
+                  mkdir -p $out/nix-support
+                  echo "file binary-dist \"$out/bin/adhd\"" >> $out/nix-support/hydra-build-products
                 '';
               })
             );
